@@ -8,7 +8,6 @@ const EventsCalendar = () => {
   const cardRef = useRef(null);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [events] = useState([
-
     { id: 1, date: new Date(2025, 2, 1), title: "Youth Meeting", type: "Community", time: "9AM" }
   ]);
 
@@ -118,30 +117,53 @@ const EventsCalendar = () => {
           <div ref={cardRef} className="bg-[#F6F6F6] w-[50%] m-auto h-auto px-10 pb-6 pt-10 rounded-lg shadow-[6px_6px_0px_0_rgba(170,199,255,1)]">
             <p className="font-lexendBold text-customDarkBlue2 text-center text-2xl"> Adding New Event </p>
             <form className="w-full mt-8">
-              <div className="case-name-group">
-                <p className="font-lexendReg text-lg"> Event Title </p>
-                <input type="text" className="w-full px-5 py-2 mt-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-customBlue1 focus:border-transparent inset-shadow-sm" />
-              </div>
-              <div className="complainant-name-group mt-3">
+              <div className="first-row flex items-center w-full space-x-2">
+                <div className="event-id-group w-1/3">
+                  <p className="font-lexendReg text-lg"> Event ID </p>
+                  <input
+                    type="text"
+                    className="w-full px-5 py-2 mt-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-customBlue1 focus:border-transparent inset-shadow-sm"
+                  />
+                </div>
+                <div className="event-title-group w-2/3">
+                  <p className="font-lexendReg text-lg"> Event Title </p>
+                  <input 
+                    type="text" 
+                    className="w-full px-5 py-2 mt-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-customBlue1 focus:border-transparent inset-shadow-sm" 
+                  />
+                </div>
+              </div> 
+              <div className="location-group mt-3">
                 <p className="font-lexendReg text-lg"> Location </p>
-                <input type="text" className="w-full px-5 py-2 mt-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-customBlue1 focus:border-transparent inset-shadow-sm" />
+                <input 
+                  type="text" 
+                  className="w-full px-5 py-2 mt-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-customBlue1 focus:border-transparent inset-shadow-sm" 
+                />
               </div>
               <div className="third-row flex items-center w-full mt-3 space-x-2">
                 <div className="date-group w-1/3">
                   <p className="font-lexendReg text-lg"> Date </p>
-                  <input type="date" className="w-full px-3 py-2 mt-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-customBlue1 focus:border-transparent inset-shadow-sm" />
+                  <input 
+                    type="date" 
+                    className="w-full px-3 py-2 mt-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-customBlue1 focus:border-transparent inset-shadow-sm" 
+                  />
                 </div>
                 <div className="time-group w-1/3">
                   <p className="font-lexendReg text-lg"> Time </p>
-                  <input type="time" className="w-full px-3 py-2 mt-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-customBlue1 focus:border-transparent inset-shadow-sm" />
+                  <input 
+                    type="time" 
+                    className="w-full px-3 py-2 mt-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-customBlue1 focus:border-transparent inset-shadow-sm" 
+                  />
                 </div>
                 <div className="category-group w-1/3">
                   <p className="font-lexendReg text-lg"> Category </p>
-                  <select className="w-full px-3 py-2 mt-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-customBlue1 focus:border-transparent inset-shadow-sm">
-                    <option value="meeting">Meeting</option>
-                    <option value="communityEvent">Community Event</option>
-                    <option value="caseProceeding">Case Proceeding</option>
-                    <option value="others">Others</option>
+                  <select 
+                    className="w-full px-3 py-2 mt-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-customBlue1 focus:border-transparent inset-shadow-sm"
+                  >
+                    <option value="Meeting">Meeting</option>
+                    <option value="Community Event">Community Event</option>
+                    <option value="Case Proceeding">Case Proceeding</option>
+                    <option value="Others">Others</option>
                   </select> 
                 </div>
               </div>

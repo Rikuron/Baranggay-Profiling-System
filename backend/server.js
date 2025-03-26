@@ -1,18 +1,17 @@
 const express = require('express');
-const multer = require('multer'); // Import multer
-const path = require('path'); // Import path
 const redis = require('redis');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const fs = require('fs');
-const jwt = require('jsonwebtoken');
-const bcrypt = require('bcrypt');
+const multer = require('multer'); // Import multer for storing of Announceent Images
+const path = require('path'); // Import path for storing of Announceent Images
+const fs = require('fs'); // For deleting of Announcement Images
+const jwt = require('jsonwebtoken'); // For Staff user Authentication
+const bcrypt = require('bcrypt'); // For hashing of passwords of Staff users
 
-require('dotenv').config();
+require('dotenv').config(); // Load environment variables
 
 const app = express();
 const PORT = process.env.PORT || 5001;
-const ADMIN_KEY = process.env.ADMIN_KEY || 'eugenio<3';
 
 // Connect to Redis
 const client = redis.createClient({
@@ -489,6 +488,319 @@ app.delete('/cases/:id', async (req, res) => {
     res.status(500).json({ error: 'Failed to delete case', message: error.message });
   }
 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// STAFF USERS CRUD / METHODS
+
+const ADMIN_KEY = process.env.ADMIN_KEY || 'eugenio<3'; 
+const saltRounds = 10; // For bcrypt password hashing
+
+app.post('/staff', async (req, res) => {
+  try {
+    const { 
+      staffId, 
+      fullName, 
+      position, 
+      contactNumber, 
+      email, 
+      username, 
+      password 
+    } = req.body;
+  
+    // Validate input fields
+    if (!staffId || !fullName || !position || !contactNumber || !email || !username || !password) {
+      return res.status(400).json({ message: 'All fields are required' });
+    }
+  
+    // Check if staff ID or username already exists
+    const existingStaff = await client.hGetAll(`staff:${staffId}`);
+    const existingUsername = await client.hGet('staff:usernames', username);
+    
+    if (Object.keys(existingStaff).length > 0) {
+      return res.status(409).json({ error: 'Staff ID already exists' });
+    }
+    
+    if (existingUsername) {
+      return res.status(409).json({ error: 'Username already exists' });
+    }
+  
+    // Determine admin status based on password
+    const isAdmin = password === ADMIN_KEY;
+    
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+  
+    const staff = {
+      staffId,
+      fullName,
+      position,
+      contactNumber,
+      email,
+      username,
+      password: hashedPassword,
+      isAdmin: isAdmin.toString(),
+      createdAt: new Date().toISOString()
+    };
+          
+    // Store staff in Redis
+    await client.hSet(`staff:${staffId}`, Object.entries(staff).reduce((acc, [key, value]) => {
+      acc[key] = value || '';
+      return acc;
+    }, {}));
+    await client.sAdd('staff', `staff:${staffId}`);
+    
+    // Store username for unique check
+    await client.hSet('staff:usernames', username, staffId);
+  
+    res.status(201).json({ 
+      message: 'Staff added successfully', 
+      staff: {
+        staffId,
+        fullName,
+        position,
+        contactNumber,
+        email,
+        username,
+        isAdmin
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to add staff', message: error.message });
+  }
+});
+
+app.get('/staff', async (req, res) => {
+  try {
+    const staffIds = await client.sMembers('staff');
+    const staff = await Promise.all(
+      staffIds.map(async (id) => {
+        const staffMember = await client.hGetAll(id);
+        // Remove sensitive information before sending
+        delete staffMember.password;
+        return staffMember;
+      })
+    );
+
+    res.status(200).json(staff);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch staff', message: error.message });
+  }
+});
+
+app.get('/staff/:id', async (req, res) => {
+  try {
+    const staffMember = await client.hGetAll(`staff:${req.params.id}`);
+
+    if (Object.keys(staffMember).length === 0) {
+      return res.status(404).json({ message: 'Staff member not found' });
+    }
+
+    // Remove sensitive information before sending
+    delete staffMember.password;
+    res.json(staffMember);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch staff member', message: error.message });
+  }
+});
+
+app.put('/staff/:id', async (req, res) => {
+  try {
+    const {
+      fullName,
+      position,
+      contactNumber,
+      email,
+      username,
+      password
+    } = req.body;
+    const staffId = req.params.id;
+
+    const existingStaff = await client.hGetAll(`staff:${staffId}`);
+    if (Object.keys(existingStaff).length === 0) {
+      return res.status(404).json({ message: 'Staff member not found' });
+    }
+
+    // Check if new username is already taken (except by current user)
+    if (username && username !== existingStaff.username) {
+      const existingUsername = await client.hGet('staff:usernames', username);
+      if (existingUsername) {
+        return res.status(409).json({ error: 'Username already exists' });
+      }
+    }
+
+    // Determine admin status
+    const isAdmin = password ? (password === ADMIN_KEY) : (existingStaff.isAdmin === 'true');
+    
+    // Hash new password if provided
+    const hashedPassword = password 
+      ? await bcrypt.hash(password, saltRounds) 
+      : existingStaff.password;
+
+    const updatedStaff = {
+      staffId: existingStaff.staffId,
+      fullName: fullName || existingStaff.fullName,
+      position: position || existingStaff.position,
+      contactNumber: contactNumber || existingStaff.contactNumber,
+      email: email || existingStaff.email,
+      username: username || existingStaff.username,
+      password: hashedPassword,
+      isAdmin: isAdmin.toString(),
+      createdAt: existingStaff.createdAt,
+      updatedAt: new Date().toISOString()
+    };
+
+    // Remove old username if changed
+    if (username && username !== existingStaff.username) {
+      await client.hDel('staff:usernames', existingStaff.username);
+      await client.hSet('staff:usernames', username, staffId);
+    }
+
+    await client.hSet(`staff:${staffId}`, Object.entries(updatedStaff).reduce((acc, [key, value]) => {
+      acc[key] = value || '';
+      return acc;
+    }, {}));
+
+    res.json({
+      staffId,
+      fullName: updatedStaff.fullName,
+      position: updatedStaff.position,
+      contactNumber: updatedStaff.contactNumber,
+      email: updatedStaff.email,
+      username: updatedStaff.username,
+      isAdmin
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update staff member', message: error.message });
+  }
+});
+
+app.delete('/staff/:id', async (req, res) => {
+  try {
+    const staffId = req.params.id;
+    const fullStaffKey = `staff:${staffId}`;
+
+    // Fetch existing staff to get username for removal
+    const existingStaff = await client.hGetAll(fullStaffKey);
+    if (Object.keys(existingStaff).length === 0) {
+      return res.status(404).json({ message: 'Staff member not found' });
+    }
+
+    // Remove username from unique username tracking
+    await client.hDel('staff:usernames', existingStaff.username);
+
+    await client.del(fullStaffKey);
+    await client.sRem('staff', fullStaffKey);
+
+    res.status(204).send();
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete staff member', message: error.message });
+  }
+});
+
+// Login Endpoint
+app.post('/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+      return res.status(400).json({ message: 'Username and password are required' });
+    }
+
+    // Find staff member by username
+    const staffId = await client.hGet('staff:usernames', username);
+    if (!staffId) {
+      return res.status(401).json({ message: 'Invalid username or password' });
+    }
+
+    // Get full staff details
+    const staff = await client.hGetAll(`staff:${staffId}`);
+
+    // Verify password
+    const isPasswordValid = await bcrypt.compare(password, staff.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: 'Invalid username or password' });
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { 
+        staffId: staff.staffId, 
+        username: staff.username, 
+        isAdmin: staff.isAdmin === 'true' 
+      }, 
+      process.env.JWT_SECRET || 'your_jwt_secret', 
+      { expiresIn: '24h' }
+    );
+
+    res.json({
+      message: 'Login successful',
+      token,
+      staffId: staff.staffId,
+      username: staff.username,
+      isAdmin: staff.isAdmin === 'true'
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Login failed', message: error.message });
+  }
+});
+
+
+
+
+
+
+
 
 
 
