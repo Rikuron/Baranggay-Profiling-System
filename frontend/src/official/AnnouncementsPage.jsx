@@ -10,6 +10,7 @@ const AnnouncementsPage = () => {
   const [description, setDescription] = useState('');
   const [image, setImage] = useState(null);
   const [announcements, setAnnouncements] = useState([]);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredAnnouncements, setFilteredAnnouncements] = useState([]);
   const [showCard, setShowCard] = useState(false);
@@ -65,13 +66,13 @@ const AnnouncementsPage = () => {
 
     try {
       if (isEditMode) {
-        const response = await axios.put(`http://localhost:5001/announcements/${announcementId}`, formData);
+        await axios.put(`http://localhost:5001/announcements/${announcementId}`, formData);
         alert('Announcement updated successfully');
       } else {
         const dateTimePosted = new Date().toISOString();
         formData.append('dateTimePosted', dateTimePosted);
 
-        const response = await axios.post('http://localhost:5001/announcements', formData);
+        await axios.post('http://localhost:5001/announcements', formData);
         alert('Announcement posted successfully');
       }
 
@@ -297,7 +298,7 @@ const AnnouncementsPage = () => {
         <div className="table-card bg-white w-full h-auto mt-5 px-4 pt-6 pb-4 rounded-xl shadow-md">
           <div className="overflow-x-auto">
             <table className="w-full font-lexendReg text-sm border-collapse" >
-              <thead className="text-white text-left">
+              <thead className="text-white text-center">
                 <tr >
                   <th scope="col" className="px-6 py-3 bg-customDarkBlue2 border-2 border-white">
                     ID

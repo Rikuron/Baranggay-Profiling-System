@@ -261,6 +261,7 @@ const Residents = () => {
                     onChange={(e) => setResidentId(e.target.value)} 
                     className="w-[100%] px-5 py-2 mt-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-customBlue1 focus:border-transparent inset-shadow-sm" 
                     required
+                    disabled = {currentResidentId}
                   />
                 </div>
                 <div className="contact-number-group w-1/3">

@@ -12,6 +12,7 @@ require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 5001;
+const ADMIN_KEY = process.env.ADMIN_KEY || 'eugenio<3';
 
 // Connect to Redis
 const client = redis.createClient({
@@ -33,7 +34,6 @@ client.connect()
   .then(() => console.log('Connected to Redis'))
   .catch(err => console.error('Redis connection error:', err));
 
-const ADMIN_KEY = process.env.ADMIN_KEY || 'eugenio<3';
 
 
 
@@ -66,7 +66,7 @@ app.post('/residents', async (req, res) => {
   
     const existingResident = await client.hGetAll(`resident:${residentId}`);
     if (Object.keys(existingResident).length > 0) {
-        return res.status(409).json({ error: 'Resident ID already exists' });
+      return res.status(409).json({ error: 'Resident ID already exists' });
     }
   
     const resident = {
@@ -332,6 +332,169 @@ app.delete('/announcements/:id', async (req, res) => {
     res.status(500).json({ error: 'Failed to delete announcement', message: error.message });
   }
 });
+
+
+
+
+
+
+
+
+
+
+
+// CASES CRUD
+app.post('/cases', async (req, res) => {
+  try {
+    const {
+      caseId,
+      caseName,
+      caseType,
+      caseStatus,
+      complainantName,
+      dateFiled
+    } = req.body;
+
+    // Comprehensive input validation
+    if (!caseId || !caseName || !caseType || !caseStatus || !complainantName || !dateFiled) {
+      return res.status(400).json({ message: 'All fields are required' });
+    }
+
+    // Check for existing case with the same ID
+    const existingCase = await client.hGetAll(`case:${caseId}`);
+    if (Object.keys(existingCase).length > 0) {
+      return res.status(409).json({ error: 'Case ID already exists' });
+    }
+
+    // Prepare case object with creation timestamp
+    const newCase = {
+      caseId,
+      caseName,
+      caseType,
+      caseStatus,
+      complainantName,
+      dateFiled,
+      createdAt: new Date().toISOString(),
+    };
+
+    // Store case in Redis
+    await client.hSet(`case:${caseId}`, Object.entries(newCase).reduce((acc, [key, value]) => {
+      acc[key] = value || '';
+      return acc;
+    }, {}));
+    await client.sAdd('cases', `case:${caseId}`);
+
+    res.status(201).json(newCase);
+  } catch (error) {
+    console.error('Error adding case:', error);
+    res.status(500).json({ error: 'Failed to add case', message: error.message });
+  }
+});
+
+app.get('/cases', async (req, res) => {
+  try {
+    const caseIds = await client.sMembers('cases');
+    const cases = await Promise.all(
+      caseIds.map(async (id) => {
+        const caseData = await client.hGetAll(id);
+        return caseData;
+      })
+    );
+
+    // Sort cases by creation or update time (most recent first)
+    const sortedCases = cases.sort((a, b) => {
+      const dateA = a.updatedAt || a.createdAt;
+      const dateB = b.updatedAt || b.createdAt;
+      return new Date(dateB) - new Date(dateA);
+    });
+
+    res.status(200).json(sortedCases);
+  } catch (error) {
+    console.error('Error fetching cases:', error);
+    res.status(500).json({ error: 'Failed to fetch cases', message: error.message });
+  }
+});
+
+app.get('/cases/:id', async (req, res) => {
+  try {
+    const caseData = await client.hGetAll(`case:${req.params.id}`);
+
+    if (Object.keys(caseData).length === 0) {
+      return res.status(404).json({ message: 'Case not found' });
+    }
+
+    res.json(caseData);
+  } catch (error) {
+    console.error('Error fetching case:', error);
+    res.status(500).json({ error: 'Failed to fetch case', message: error.message });
+  }
+});
+
+app.put('/cases/:id', async (req, res) => {
+  try {
+    const {
+      caseName,
+      caseType,
+      caseStatus,
+      complainantName,
+      dateFiled
+    } = req.body;
+    const caseId = req.params.id;
+
+    const existingCase = await client.hGetAll(`case:${caseId}`);
+    if (Object.keys(existingCase).length === 0) {
+      return res.status(404).json({ message: 'Case not found' });
+    }
+
+    const updatedCase = {
+      caseId: existingCase.caseId,
+      caseName: caseName || existingCase.caseName,
+      caseType: caseType || existingCase.caseType,
+      caseStatus: caseStatus || existingCase.caseStatus,
+      complainantName: complainantName || existingCase.complainantName,
+      dateFiled: dateFiled || existingCase.dateFiled,
+      createdAt: existingCase.createdAt,
+      updatedAt: new Date().toISOString()
+    };
+
+    await client.hSet(`case:${caseId}`, Object.entries(updatedCase).reduce((acc, [key, value]) => {
+      acc[key] = value || '';
+      return acc;
+    }, {}));
+
+    res.json(updatedCase);
+  } catch (error) {
+    console.error('Error updating case:', error);
+    res.status(500).json({ error: 'Failed to update case', message: error.message });
+  }
+});
+
+app.delete('/cases/:id', async (req, res) => {
+  try {
+    const caseId = req.params.id;
+    const fullCaseKey = `case:${caseId}`;
+
+    // Verify case exists before deletion
+    const existingCase = await client.hGetAll(fullCaseKey);
+    if (Object.keys(existingCase).length === 0) {
+      return res.status(404).json({ message: 'Case not found' });
+    }
+
+    await client.del(fullCaseKey);
+    await client.sRem('cases', fullCaseKey);
+
+    res.status(204).send();
+  } catch (error) {
+    console.error('Error deleting case:', error);
+    res.status(500).json({ error: 'Failed to delete case', message: error.message });
+  }
+});
+
+
+
+
+
+
 
 
 

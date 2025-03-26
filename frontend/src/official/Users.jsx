@@ -109,7 +109,7 @@ const Users = () => {
         <div className="table-card bg-white w-full h-auto mt-5 px-4 pt-6 pb-4 rounded-xl shadow-md">
           <div className="overflow-x-auto">
             <table className="w-full font-lexendReg text-sm border-collapse" >
-              <thead className="text-white text-left">
+              <thead className="text-white text-center">
                 <tr >
                   <th scope="col" className="px-6 py-3 bg-customDarkBlue2 border-2 border-white">
                     Staff ID
@@ -122,6 +122,9 @@ const Users = () => {
                   </th>
                   <th scope="col" className="px-6 py-3 bg-customDarkBlue2 border-2 border-white">
                     Contact Number
+                  </th>
+                  <th scope="col" className="px-6 py-3 bg-customDarkBlue2 border-2 border-white">
+                    Email
                   </th>
                   <th scope="col" className="px-6 py-3 bg-customDarkBlue2 border-2 border-white">
                     Username
