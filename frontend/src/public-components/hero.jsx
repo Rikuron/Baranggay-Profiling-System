@@ -14,7 +14,7 @@ const Hero = () => {
           <div className="text-group">
             
             <p className="font-patuaOneReg text-customBlue1 text-[2.65rem]"> Welcome to Barangay Dulag </p>
-            <p className="font-patuaOneReg text-white text-[1.25rem] max-w-[31rem] mt-4"> Welcome to Barangay Dulag, a charming community nestled within Iligan City in the southern Philippines. Located in the province of Lanao del Norte on the island of Mindanao, Dulag is one of the many diverse barangays that make up Iligan City's vibrant landscape. 
+            <p className="font-patuaOneReg text-white text-[1.25rem] max-w-[31rem] mt-4"> A charming community nestled within Iligan City in the southern Philippines. Dulag is one of the many diverse barangays that make up Iligan City's vibrant landscape. 
               
             <br /> <br />
 

@@ -21,21 +21,38 @@ const Residents = () => {
   const [originalResidents, setOriginalResidents] = useState([]); // New state for original residents
 
   const fetchResidents = async () => {
-      const response = await axios.get('http://localhost:5001/residents'); // Changed to axios
-      setResidents(response.data); // Updated to use response.data
-      setOriginalResidents(response.data); // Store original residents
+    try {
+      const response = await axios.get('http://localhost:5001/residents'); // Fetch residents
+      const processedResidents = response.data.map(resident => ({
+        ...resident,
+        id: resident.residentId
+      }));
+      
+      setResidents(processedResidents);
+      setOriginalResidents(processedResidents); // Store original residents
+    } catch (error) {
+      console.error('Error fetching residents:', error);
+      alert('Failed to fetch residents');
+    }
   };
 
   useEffect(() => {
     fetchResidents();
   }, []);
 
-
   const cardRef = useRef(null);
 
   const handleAddResidentClick = () => {
     setShowCard(true);
     setCurrentResidentId(null); // Reset for adding new resident
+    setResidentId('');
+    setFullName('');
+    setBirthdate('');
+    setGender('Male');
+    setContactNumber('');
+    setAddress('');
+    setMaritalStatus('Single');
+    setOccupation('');
   };
 
   const handleCloseCard = () => {
@@ -58,17 +75,13 @@ const Residents = () => {
 
   const handleSearch = () => {
     if (searchInput === '' && selectedAge === 'all' && selectedGender === 'all' && selectedMaritalStatus === 'all') {
-      fetchResidents(); // Reset to show all residents if search input is empty
+      setResidents(originalResidents);
       return;
     }
     
-    console.log(`Selected Age: ${selectedAge}, Selected Gender: ${selectedGender}, Selected Marital Status: ${selectedMaritalStatus}`);
-
     const filteredResidents = originalResidents.filter(resident => { // Use originalResidents for filtering
       const age = calculateAge(resident.birthdate);
       const ageCategory = getAgeCategory(age);
-
-      console.log(`Resident: ${resident.fullName}, Age: ${age}, Age Category: ${ageCategory}`);
 
       return (
         (searchInput === '' ||
@@ -78,12 +91,11 @@ const Residents = () => {
           resident.contactNumber.includes(searchInput) || 
           resident.occupation.toLowerCase().includes(searchInput.toLowerCase())) &&
         (ageCategory === selectedAge || selectedAge === 'all') &&
-        (resident.gender.toLowerCase() === selectedGender.toLowerCase() || selectedGender === 'all') &&
-        (resident.maritalStatus.toLowerCase() === selectedMaritalStatus.toLowerCase() || selectedMaritalStatus === 'all')
+        (resident.gender && resident.gender.toLowerCase() === selectedGender.toLowerCase() || selectedGender === 'all') &&
+        (resident.maritalStatus && resident.maritalStatus.toLowerCase() === selectedMaritalStatus.toLowerCase() || selectedMaritalStatus === 'all')
       );
     });
 
-    console.log('Filtered Residents:', filteredResidents);
     setResidents(filteredResidents);
   };
 
@@ -110,27 +122,32 @@ const Residents = () => {
   };
 
   const handleEdit = async (residentId) => {
-    const response = await fetch(`http://localhost:5001/residents/${residentId}`);
-    const resident = await response.json();
-    setResidentId(resident.residentId);
-    setFullName(resident.fullName);
-    setBirthdate(resident.birthdate);
-    setGender(resident.gender);
-    setContactNumber(resident.contactNumber);
-    setAddress(resident.address);
-    setMaritalStatus(resident.maritalStatus);
-    setOccupation(resident.occupation);
-    setCurrentResidentId(residentId); // Set the current resident ID for editing
-    setShowCard(true); // Show the card for editing
+    try {
+      const response = await axios.get(`http://localhost:5001/residents/${residentId}`);
+      const resident = response.data;
+  
+      setResidentId(resident.residentId);
+      setFullName(resident.fullName);
+      setBirthdate(resident.birthdate);
+      setGender(resident.gender);
+      setContactNumber(resident.contactNumber);
+      setAddress(resident.address);
+      setMaritalStatus(resident.maritalStatus);
+      setOccupation(resident.occupation);
+      setCurrentResidentId(residentId); // Set the current resident ID for editing
+      setShowCard(true); // Show the card for editing
+    } catch (error) {
+      console.error('Error fetching resident:', error);
+      alert('Failed to fetch resident');
+    }
   };
 
   const handleDelete = async (residentId) => {
     try {
-      await axios.delete(`http://localhost:5001/residents/${residentId}`); // Changed to axios
-      alert('Resident deleted successfully');
-      // Refresh the residents list after deletion
-      const updatedResidents = residents.filter(resident => resident.residentId !== residentId);
-      setResidents(updatedResidents);
+      await axios.delete(`http://localhost:5001/residents/${residentId}`);
+      alert('Resident deleted successfully!');
+
+      fetchResidents();
     } catch (error) {
       console.error('Error deleting resident:', error); // Log the error
       alert('Failed to delete resident');
@@ -159,16 +176,16 @@ const Residents = () => {
   ];
 
   const genderData = [
-    { name: 'Male', value: residents.filter(resident => resident.gender.toLowerCase() === 'male').length },
-    { name: 'Female', value: residents.filter(resident => resident.gender.toLowerCase() === 'female').length },
-    { name: 'Other', value: residents.filter(resident => resident.gender.toLowerCase() === 'other').length },
+    { name: 'Male', value: residents.filter(resident => resident.gender && resident.gender.toLowerCase() === 'male').length },
+    { name: 'Female', value: residents.filter(resident => resident.gender && resident.gender.toLowerCase() === 'female').length },
+    { name: 'Other', value: residents.filter(resident => resident.gender && resident.gender.toLowerCase() === 'other').length },
   ];
   
   const maritalStatusData = [
-    { name: 'Single', value: residents.filter(resident => resident.maritalStatus.toLowerCase() === 'single').length },
-    { name: 'Married', value: residents.filter(resident => resident.maritalStatus.toLowerCase() === 'married').length },
-    { name: 'Widowed', value: residents.filter(resident => resident.maritalStatus.toLowerCase() === 'widowed').length },
-    { name: 'Separated', value: residents.filter(resident => resident.maritalStatus.toLowerCase() === 'separated').length },
+    { name: 'Single', value: residents.filter(resident => resident.maritalStatus && resident.maritalStatus.toLowerCase() === 'single').length },
+    { name: 'Married', value: residents.filter(resident => resident.maritalStatus && resident.maritalStatus.toLowerCase() === 'married').length },
+    { name: 'Widowed', value: residents.filter(resident => resident.maritalStatus && resident.maritalStatus.toLowerCase() === 'widowed').length },
+    { name: 'Separated', value: residents.filter(resident => resident.maritalStatus && resident.maritalStatus.toLowerCase() === 'separated').length },
   ];
   
   const occupationData = Object.entries(
@@ -444,7 +461,7 @@ const Residents = () => {
                     <td className="px-6 py-4 border-2 border-white">{resident.occupation}</td>
                     <td className="px-6 py-4 border-2 border-white">
                       <div className="control-buttons-container flex items-center justify-between space-x-2">
-                        <button onClick={() => handleEdit(resident.id)}>
+                        <button onClick={() => handleEdit(resident.residentId)}>
                           <FaEdit className="text-customDarkBlue1 text-3xl hover:text-blue-500 hover:cursor-pointer transition duration-300 ease-in-out" />
                         </button>
                         <button onClick={() => handleDelete(resident.id)}>

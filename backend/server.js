@@ -1,8 +1,10 @@
 const express = require('express');
 const multer = require('multer'); // Import multer
+const path = require('path'); // Import path
 const redis = require('redis');
 const cors = require('cors');
 const bodyParser = require('body-parser');
+const fs = require('fs');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 
@@ -11,16 +13,20 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 5001;
 
-const storage = multer.memoryStorage(); // Store files in memory
-const upload = multer({ storage: storage }); // Set up multer for file uploads
+// Connect to Redis
+const client = redis.createClient({
+  url: 'redis://@127.0.0.1:6380'  // Default Redis connection
+});
 
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use('/uploads', express.static('uploads'));
 
-// Connect to Redis
-const client = redis.createClient({
-  url: 'redis://@127.0.0.1:6380'  // Default Redis connection
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).send('Something broke!');
 });
 
 client.connect()
@@ -29,16 +35,40 @@ client.connect()
 
 const ADMIN_KEY = process.env.ADMIN_KEY || 'eugenio<3';
 
+
+
+
+
+
+
+
+
+
+
+// RESIDENTS CRUD
 app.post('/residents', async (req, res) => {
-  const { residentId , fullName, birthdate, gender, contactNumber, address, maritalStatus, occupation } = req.body;
-
-  // Validate input fields
-  if (!residentId || !fullName || !birthdate || !gender || !contactNumber || !address || !maritalStatus || !occupation) {
-    return res.status(400).json({ message: 'All fields are required' });
-  }
-
   try {
-    // Create resident object
+    const { 
+      residentId , 
+      fullName, 
+      birthdate, 
+      gender, 
+      contactNumber, 
+      address, 
+      maritalStatus, 
+      occupation 
+    } = req.body;
+  
+    // Validate input fields
+    if (!residentId || !fullName || !birthdate || !gender || !contactNumber || !address || !maritalStatus || !occupation) {
+      return res.status(400).json({ message: 'All fields are required' });
+    }
+  
+    const existingResident = await client.hGetAll(`resident:${residentId}`);
+    if (Object.keys(existingResident).length > 0) {
+        return res.status(409).json({ error: 'Resident ID already exists' });
+    }
+  
     const resident = {
       residentId,
       fullName,
@@ -47,131 +77,265 @@ app.post('/residents', async (req, res) => {
       contactNumber,
       address,
       maritalStatus,
-      occupation
+      occupation,
+      createdAt: new Date().toISOString()
     };
-        
+          
     // Store resident in Redis
-    await client.hSet(`resident:${resident.residentId}`, resident);
-
+    await client.hSet(`resident:${residentId}`, Object.entries(resident).reduce((acc, [key, value]) => {
+      acc[key] = value || '';
+      return acc;
+    }, {}));
+    await client.sAdd('residents', `resident:${residentId}`);
+  
     res.status(201).json({ message: 'Resident added successfully', resident });
-
   } catch (error) {
-    console.error('Error registering Resident: ', error);
-    res.status(500).json({ message: 'Failed to register Resident' });
+    res.status(500).json({ error: 'Failed to add resident', message: error.message });
+  }
+});
+
+app.get('/residents', async (req, res) => {
+  try {
+    const residentIds = await client.sMembers('residents');
+    const residents = await Promise.all(
+      residentIds.map(async (id) => {
+        const resident = await client.hGetAll(id);
+        return resident;
+      })
+    );
+
+    res.status(200).json(residents);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch residents', message: error.message });
   }
 });
 
 app.get('/residents/:id', async (req, res) => {
-  const id = req.params.res;
-  const resident = await client.hGetAll(`resident:${residentId}`);
-  if (Object.keys(resident).length === 0) {
-    return res.status(404).json({ message: 'Resident not found' });
+  try {
+    const resident = await client.hGetAll(`resident:${req.params.id}`);
+
+    if (Object.keys(resident).length === 0) {
+      return res.status(404).json({ message: 'Resident not found' });
+    }
+
+    res.json(resident);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch resident', message: error.message });
   }
-  res.json(resident);
 })
 
-app.get('/residents', async (req, res) => {
-  const keys = await client.keys('resident:*');
-  const residents = await Promise.all(keys.map(async (key) => {
-    return { residentId: key.split(':')[1], ...(await client.hGetAll(key)) };
-  }));
-
-  res.status(200).json(residents);
-});
-
 app.put('/residents/:id', async (req, res) => {
-  const id = req.params.residentId;
-  const { fullName, birthdate, gender, contactNumber, address, maritalStatus, occupation } = req.body;
-
-  // Validate input fields
-  if (!fullName && !birthdate && !gender && !contactNumber && !address && !maritalStatus && !occupation) {
-    return res.status(400).json({ message: 'At least one field is required to update' });
-  }
-
   try {
-    const existingResident = await client.hGetAll(`resident:${id}`);
+    const {
+      fullName,
+      birthdate,
+      gender,
+      contactNumber,
+      address,
+      maritalStatus,
+      occupation
+    } = req.body;
+    const residentId = req.params.id;
+
+    const existingResident = await client.hGetAll(`resident:${residentId}`);
     if (Object.keys(existingResident).length === 0) {
       return res.status(404).json({ message: 'Resident not found' });
     }
 
-    // Update resident data in Redis
-    if (fullName) await client.hSet(`resident:${id}`, 'fullName', fullName);
-    if (birthdate) await client.hSet(`resident:${id}`, 'birthdate', birthdate);
-    if (gender) await client.hSet(`resident:${id}`, 'gender', gender);
-    if (contactNumber) await client.hSet(`resident:${id}`, 'contactNumber', contactNumber);
-    if (address) await client.hSet(`resident:${id}`, 'address', address);
-    if (maritalStatus) await client.hSet(`resident:${id}`, 'maritalStatus', maritalStatus);
-    if (occupation) await client.hSet(`resident:${id}`, 'occupation', occupation);
+    const updatedResident = {
+      residentId: existingResident.residentId,
+      fullName,
+      birthdate,
+      gender,
+      contactNumber,
+      address,
+      maritalStatus,
+      occupation,
+      updatedAt: new Date().toISOString()
+    };
 
-    res.status(200).json({ message: 'Resident updated successfully' });
+    await client.hSet(`resident:${residentId}`, Object.entries(updatedResident).reduce((acc, [key, value]) => {
+      acc[key] = value || '';
+      return acc;
+    } ,{}));
+
+    res.json(updatedResident);
   } catch (error) {
-    console.error('Error updating resident:', error);
-    res.status(500).json({ message: 'Failed to update resident' });
+    res.status(500).json({ error: 'Failed to update resident', message: error.message });
   }
 });
 
 app.delete('/residents/:id', async (req, res) => {
-  const id = req.params.residentId;
-  await client.del(`resident:${id}`);
-  res.status(200).json({ message: 'Resident deleted successfully' });
-});
-
-app.post('/register', async (req, res) => {
-  const { username, password } = req.body;
-
-});
-
-// Announcement posting endpoint
-app.post('/announcements', upload.single('image'), async (req, res) => {
-  const { announcementId, title, description } = req.body;
-  const dateTimePosted = new Date().toISOString();
-
-  // Log incoming request data
-  console.log('Incoming announcement data:', req.body);
-
-  // Validate input fields
-  if (!announcementId || !title || !description) {
-    return res.status(400).json({ message: 'Announcement ID, title, and description are required' });
-  }
-
   try {
-    // Check if the announcement ID already exists
-    const existingAnnouncement = await client.hGetAll(`announcement:${announcementId}`);
-    if (Object.keys(existingAnnouncement).length > 0) {
-      return res.status(400).json({ message: 'Announcement ID already exists' });
+    const residentId = `resident:${req.params.id}`;
+
+
+    await client.del(residentId);
+    await client.sRem('residents', residentId);
+
+    res.status(204).send();
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete resident', message: error.message });
+  }
+});
+
+
+
+
+
+
+
+
+
+
+
+// ANNOUNCEMENTS CRUD
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+      cb(null, 'uploads/announcements/');
+  },
+  filename: (req, file, cb) => {
+      cb(null, `${Date.now()}${path.extname(file.originalname)}`);
+  }
+});
+const upload = multer({ 
+  storage: storage,
+  limits: { fileSize: 5 * 1024 * 1024 } // 5MB file size limit
+});
+
+app.post('/announcements', upload.single('image'), async (req, res) => {
+  try {
+    const {
+      announcementId,
+      title,
+      description,
+    } = req.body;
+
+    if (!announcementId || !title || !description) {
+      return res.status(400).json({ message: 'All fields are required' });
     }
 
-    // Create announcement object
+    const existingAnnouncement = await client.hGetAll(`announcement:${announcementId}`);
+    if (Object.keys(existingAnnouncement).length > 0) {
+      return res.status(409).json({ error: 'Announcement ID already exists' });
+    }
+
     const announcement = {
       announcementId,
       title,
       description,
-      image: req.file ? req.file.buffer : null, // Handle image buffer
-      dateTimePosted
+      image: req.file ? req.file.path : '',
+      dateTimePosted: new Date().toISOString()
     };
 
-    // Store announcement in Redis
-    await client.hSet(`announcement:${announcementId}`, announcement);
-    res.status(201).json({ message: 'Announcement posted successfully', announcement });
+    await client.hSet(`announcement:${announcementId}`, Object.entries(announcement).reduce((acc, [key, value]) => {
+      acc[key] = value || '';
+      return acc;
+    }, {}));
+    await client.sAdd('announcements', `announcement:${announcementId}`);
 
+    res.status(201).json(announcement);
   } catch (error) {
-    console.error('Error posting announcement: ', error);
-    res.status(500).json({ message: 'Failed to post announcement' });
+    res.status(500).json({ error: 'Failed to add announcement', message: error.message });
   }
 });
 
 app.get('/announcements', async (req, res) => {
-  const keys = await client.keys('announcement:*');
-  const announcements = await Promise.all(keys.map(async (key) => {
-    return { announcementId: key.split(':')[1], ...(await client.hGetAll(key)) };
-  }));
+  try {
+    const announcementIds = await client.sMembers('announcements');
+    const announcements = await Promise.all(
+      announcementIds.map(async (id) => {
+        const announcement = await client.hGetAll(id);
+        return announcement;
+      })
+    );
 
-  res.status(200).json(announcements);
+    const sortedAnnouncements = announcements.sort((a, b) => {
+      const dateA = a.updatedAt || a.dateTimePosted;
+      const dateB = b.updatedAt || b.dateTimePosted;
+
+      return new Date(dateB) - new Date(dateA);
+    });
+
+    res.json(sortedAnnouncements);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch announcements', message: error.message });
+  }
 });
 
 app.get('/announcements/:id', async (req, res) => {
-  const id
-})
+  try {
+    const announcement = await client.hGetAll(`announcement:${req.params.id}`);
+
+    if (Object.keys(announcement).length === 0) {
+      return res.status(404).json({ message: 'Announcement not found' });
+    }
+
+    res.json(announcement);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch announcement', message: error.message });
+  }
+});
+
+app.put('/announcements/:id', upload.single('image'), async (req, res) => {
+  try {
+    const { title, description } = req.body;
+    const announcementId = req.params.id;
+
+    const existingAnnouncement = await client.hGetAll(`announcement:${announcementId}`);
+    if (Object.keys(existingAnnouncement).length === 0) {
+      return res.status(404).json({ message: 'Announcement not found' });
+    }
+
+    const updatedAnnouncement = {
+      announcementId: existingAnnouncement.announcementId,
+      title: title || existingAnnouncement.title ,
+      description: description || existingAnnouncement.description,
+      image: req.file ? req.file.path : existingAnnouncement.image,
+      dateTimePosted: existingAnnouncement.dateTimePosted,
+      updatedAt: new Date().toISOString(),
+      updateCount: parseInt(existingAnnouncement.updateCount || 0) + 1
+    };
+
+    await client.hSet(`announcement:${announcementId}`, Object.entries(updatedAnnouncement).reduce((acc, [key, value]) => {
+      acc[key] = value || '';
+      return acc;
+    }, {}));
+
+    res.json(updatedAnnouncement);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update announcement', message: error.message });
+  }
+});
+
+app.delete('/announcements/:id', async (req, res) => {
+  try {
+    const announcementId = `announcement:${req.params.id}`;
+    const fullAnnouncementKey = `announcement:${announcementId}`;
+
+    const existingAnnouncement = await client.hGetAll(fullAnnouncementKey);
+
+    if(existingAnnouncement.image) {
+      try {
+        fs.unlinkSync(existingAnnouncement.image);
+      } catch (fileError) {
+        console.warn('Could not delete image file: ', fileError);
+      }
+    }
+
+    await client.del(announcementId);
+    await client.sRem('announcements', announcementId);
+
+    res.status(204).send();
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete announcement', message: error.message });
+  }
+});
+
+
+
+
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
