@@ -513,7 +513,172 @@ app.delete('/cases/:id', async (req, res) => {
 
 
 
+// EVENTS CRUD
+app.post('/events', async (req, res) => {
+  try {
+    const {
+      eventId,
+      eventTitle,
+      location,
+      date,
+      time,
+      category
+    } = req.body;
 
+    // Comprehensive input validation
+    if (!eventId || !eventTitle || !location || !date || !time || !category ) {
+      return res.status(400).json({ message: 'All fields are required' });
+    }
+
+    // Validate category
+    const validCategories = ['Meeting', 'Community Event', 'Case Proceeding', 'Others'];
+    if (!validCategories.includes(category)) {
+      return res.status(400).json({ 
+        message: 'Invalid category', 
+        validCategories: validCategories 
+      });
+    }
+
+    // Check for existing event with the same ID
+    const existingEvent = await client.hGetAll(`event:${eventId}`);
+    if (Object.keys(existingEvent).length > 0) {
+      return res.status(409).json({ error: 'Event ID already exists' });
+    }
+
+    // Prepare event object with creation timestamp
+    const newEvent = {
+      eventId,
+      eventTitle,
+      location,
+      date,
+      time,
+      category,
+      createdAt: new Date().toISOString(),
+    };
+
+    // Store event in Redis
+    await client.hSet(`event:${eventId}`, Object.entries(newEvent).reduce((acc, [key, value]) => {
+      acc[key] = value || '';
+      return acc;
+    }, {}));
+    await client.sAdd('events', `event:${eventId}`);
+
+    res.status(201).json(newEvent);
+  } catch (error) {
+    console.error('Error adding event:', error);
+    res.status(500).json({ error: 'Failed to add event', message: error.message });
+  }
+});
+
+app.get('/events', async (req, res) => {
+  try {
+    const eventIds = await client.sMembers('events');
+    const events = await Promise.all(
+      eventIds.map(async (id) => {
+        const eventData = await client.hGetAll(id);
+        return eventData;
+      })
+    );
+
+    // Sort events by creation or update time (most recent first)
+    const sortedEvents = events.sort((a, b) => {
+      const dateA = a.updatedAt || a.createdAt;
+      const dateB = b.updatedAt || b.createdAt;
+      return new Date(dateB) - new Date(dateA);
+    });
+
+    res.status(200).json(sortedEvents);
+  } catch (error) {
+    console.error('Error fetching events:', error);
+    res.status(500).json({ error: 'Failed to fetch events', message: error.message });
+  }
+});
+
+app.get('/events/:id', async (req, res) => {
+  try {
+    const eventData = await client.hGetAll(`event:${req.params.id}`);
+
+    if (Object.keys(eventData).length === 0) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+
+    res.json(eventData);
+  } catch (error) {
+    console.error('Error fetching event:', error);
+    res.status(500).json({ error: 'Failed to fetch event', message: error.message });
+  }
+});
+
+app.put('/events/:id', async (req, res) => {
+  try {
+    const {
+      eventTitle,
+      location,
+      date,
+      time,
+      category
+    } = req.body;
+    const eventId = req.params.id;
+
+    const existingEvent = await client.hGetAll(`event:${eventId}`);
+    if (Object.keys(existingEvent).length === 0) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+
+    // Validate category if provided
+    if (category) {
+      const validCategories = ['Meeting', 'Community Event', 'Case Proceeding', 'Others'];
+      if (!validCategories.includes(category)) {
+        return res.status(400).json({ 
+          message: 'Invalid category', 
+          validCategories: validCategories 
+        });
+      }
+    }
+
+    const updatedEvent = {
+      eventId: existingEvent.eventId,
+      eventTitle: eventTitle || existingEvent.eventTitle,
+      location: location || existingEvent.location,
+      date: date || existingEvent.date,
+      time: time || existingEvent.time,
+      category: category || existingEvent.category,
+      createdAt: existingEvent.createdAt,
+      updatedAt: new Date().toISOString()
+    };
+
+    await client.hSet(`event:${eventId}`, Object.entries(updatedEvent).reduce((acc, [key, value]) => {
+      acc[key] = value || '';
+      return acc;
+    }, {}));
+
+    res.json(updatedEvent);
+  } catch (error) {
+    console.error('Error updating event:', error);
+    res.status(500).json({ error: 'Failed to update event', message: error.message });
+  }
+});
+
+app.delete('/events/:id', async (req, res) => {
+  try {
+    const eventId = req.params.id;
+    const fullEventKey = `event:${eventId}`;
+
+    // Verify event exists before deletion
+    const existingEvent = await client.hGetAll(fullEventKey);
+    if (Object.keys(existingEvent).length === 0) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+
+    await client.del(fullEventKey);
+    await client.sRem('events', fullEventKey);
+
+    res.status(204).send();
+  } catch (error) {
+    console.error('Error deleting event:', error);
+    res.status(500).json({ error: 'Failed to delete event', message: error.message });
+  }
+});
 
 
 

@@ -19,7 +19,7 @@ const Users = () => {
 
   const [showCard, setShowCard] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [currentEditStaff, setCurrentEditStaff] = useState(null);
+  const [setCurrentEditStaff] = useState(null);
   const cardRef = useRef(null);
 
   const handleAddUserClick = () => {
