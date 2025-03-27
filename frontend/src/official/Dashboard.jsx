@@ -152,15 +152,6 @@ const Dashboard = () => {
               <div className="w-[95%] h-[0.5px] bg-gray-300 mx-auto" />
 
               <div>
-                <Link to="/official/reports" className="flex items-center pl-5 py-3">
-                  <HiDocumentReport className="text-customDarkBlue2 text-4xl hover:text-customDarkBlue1 transition duration-300 ease-in-out" />
-                  <p className="font-lexendReg text-md ml-3 hover:text-customDarkBlue1 transition duration-300 ease-in-out">Create New Report</p>
-                </Link>
-              </div>
-  
-              <div className="w-[95%] h-[0.5px] bg-gray-300 mx-auto" />
-
-              <div>
                 <Link to="/official/announcements" className="flex items-center pl-5 py-3">
                   <BiSolidMegaphone className="text-customDarkBlue2 text-4xl hover:text-customDarkBlue1 transition duration-300 ease-in-out" />
                   <p className="font-lexendReg text-md ml-3 hover:text-customDarkBlue1 transition duration-300 ease-in-out">Post New Announcement</p>

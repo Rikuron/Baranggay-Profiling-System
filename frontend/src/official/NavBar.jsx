@@ -2,7 +2,6 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { AiFillDashboard } from "react-icons/ai";
 import { FaHouseUser, FaUser, FaUsers } from "react-icons/fa";
-import { HiDocumentReport } from "react-icons/hi";
 import { BiSolidMegaphone } from "react-icons/bi";
 import { IoBriefcase } from "react-icons/io5";
 import { MdEvent } from "react-icons/md";
@@ -28,13 +27,6 @@ const NavBar = () => {
           <div className={`flex w-full h-13 items-center pl-7 ${location.pathname === '/official/residents' ? 'bg-customBlue1 text-customDarkBlue2' : 'text-white hover:bg-customBlue2 hover:text-customDarkBlue2'} transition duration-300 ease-in-out`}>
             <FaHouseUser className="text-4xl" />
             <p className="font-lexendReg text-xl ml-4"> Residents </p>
-          </div>
-        </Link>
-
-        <Link to="/official/reports">
-          <div className={`flex w-full h-13 items-center pl-7 ${location.pathname === '/official/reports' ? 'bg-customBlue1 text-customDarkBlue2' : 'text-white hover:bg-customBlue2 hover:text-customDarkBlue2'} transition duration-300 ease-in-out`}>
-            <HiDocumentReport className="text-4xl" />
-            <p className="font-lexendReg text-xl ml-4"> Reports </p>
           </div>
         </Link>
 
