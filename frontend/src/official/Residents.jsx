@@ -403,7 +403,10 @@ const Residents = () => {
           </div>
         </div>
 
-        <div className="table-card bg-white w-full h-auto mt-5 px-4 pt-6 pb-4 rounded-xl shadow-md">
+        <div className="table-card bg-white w-full h-auto mt-5 px-4 pt-4 pb-4 rounded-xl shadow-md">
+          <div className="total-residents pb-3 pl-2">
+            <p className="font-patuaOneReg text-black text-2xl"> Total Residents:  <strong className="text-customDarkBlue1">{residents.length}</strong> </p>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full font-lexendReg text-sm border-collapse" >
               <thead className="text-white text-center">
