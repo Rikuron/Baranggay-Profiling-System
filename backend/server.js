@@ -1105,6 +1105,83 @@ app.get('/upcoming-events', async(req, res) => {
 
 
 
+// Emailing Functionality
+const nodemailer = require('nodemailer');
+
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: 'cjbe509@gmail.com',
+    pass: 'duqh mjqz zojn iwmc'
+  }
+});
+
+app.post('/send-email', async (req, res) => {
+  try {
+    const { email, message } = req.body;
+
+    if (!email || !message) {
+      return res.status(400).json({ error: 'Email and message are required' });
+    }
+
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: 'cjbe509@gmail.com',
+      subject: 'Case Study 1 - Baranggay Profiling System',
+      text:`
+      Good day! I hope this reaches you well. This is an auto-generated email from the Dulag Barangay Profiling System.
+
+      From: ${email}
+        
+      Message:
+        ${message}
+      `,
+      replyTo: email
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+
+    res.status(200).json({
+      message: 'Email sent successfully',
+      messageId: info.messageId
+    });
+  } catch (error) {
+    console.error('Email sending failed:', error);
+    res.status(500).json({ 
+      error: 'Failed to send email', 
+      details: error.message 
+    });
+  }
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
