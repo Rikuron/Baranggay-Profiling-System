@@ -33,7 +33,33 @@ client.connect()
   .then(() => console.log('Connected to Redis'))
   .catch(err => console.error('Redis connection error:', err));
 
+const trackActivity = async (type, details) => {
+  try {
+    const activityId = `activity:${Date.now()}`;
+    const activity = {
+      id: activityId,
+      type,
+      ...details,
+      createdAt: new Date().toISOString()
+    };
 
+    await client.hSet(activityId, Object.entries(activity).reduce((acc, [key, value]) => {
+      acc[key] = value || '';
+      return acc;
+    }, {}));
+  
+    await client.sAdd('recent_activities', activityId);
+
+    const activities = await client.sMembers('recent_activities');
+    if (activities.length > 10) {
+      const oldestActivity = activities[0];
+      await client.sRem('recent_activities', oldestActivity);
+      await client.del(oldestActivity);
+    }
+  } catch (error) {
+    console.error('Error tracking activity:', error);
+  }
+}
 
 
 
@@ -87,6 +113,11 @@ app.post('/residents', async (req, res) => {
     }, {}));
     await client.sAdd('residents', `resident:${residentId}`);
   
+    await trackActivity('resident_create', {
+      residentId: resident.residentId,
+      residentName: resident.fullName
+    });
+
     res.status(201).json({ message: 'Resident added successfully', resident });
   } catch (error) {
     res.status(500).json({ error: 'Failed to add resident', message: error.message });
@@ -157,6 +188,11 @@ app.put('/residents/:id', async (req, res) => {
       acc[key] = value || '';
       return acc;
     } ,{}));
+
+    await trackActivity('resident_update', {
+      residentId: residentId,
+      residentName: updatedResident.fullName
+    });
 
     res.json(updatedResident);
   } catch (error) {
@@ -234,6 +270,11 @@ app.post('/announcements', upload.single('image'), async (req, res) => {
     }, {}));
     await client.sAdd('announcements', `announcement:${announcementId}`);
 
+    await trackActivity('announcement_create', {
+      announcementId: announcement.announcementId,
+      announcementTitle: announcement.title
+    });
+
     res.status(201).json(announcement);
   } catch (error) {
     res.status(500).json({ error: 'Failed to add announcement', message: error.message });
@@ -301,6 +342,11 @@ app.put('/announcements/:id', upload.single('image'), async (req, res) => {
       acc[key] = value || '';
       return acc;
     }, {}));
+
+    await trackActivity('announcement_update', {
+      announcementId: updatedAnnouncement.announcementId,
+      announcementTitle: updatedAnnouncement.title
+    });
 
     res.json(updatedAnnouncement);
   } catch (error) {
@@ -383,6 +429,11 @@ app.post('/cases', async (req, res) => {
     }, {}));
     await client.sAdd('cases', `case:${caseId}`);
 
+    await trackActivity('case_create', {
+      caseId: newCase.caseId,
+      caseName: newCase.caseName
+    });
+
     res.status(201).json(newCase);
   } catch (error) {
     console.error('Error adding case:', error);
@@ -460,6 +511,11 @@ app.put('/cases/:id', async (req, res) => {
       acc[key] = value || '';
       return acc;
     }, {}));
+
+    await trackActivity('case_update', {
+      caseId: updatedCase.caseId,
+      caseName: updatedCase.caseName
+    });
 
     res.json(updatedCase);
   } catch (error) {
@@ -563,6 +619,11 @@ app.post('/events', async (req, res) => {
     }, {}));
     await client.sAdd('events', `event:${eventId}`);
 
+    await trackActivity('event_create', {
+      eventId: newEvent.eventId,
+      eventTitle: newEvent.eventTitle
+    });
+
     res.status(201).json(newEvent);
   } catch (error) {
     console.error('Error adding event:', error);
@@ -651,6 +712,11 @@ app.put('/events/:id', async (req, res) => {
       acc[key] = value || '';
       return acc;
     }, {}));
+
+    await trackActivity('event_update', {
+      eventId: updatedEvent.eventId,
+      eventTitle: updatedEvent.eventTitle
+    });
 
     res.json(updatedEvent);
   } catch (error) {
@@ -959,6 +1025,76 @@ app.post('/login', async (req, res) => {
     res.status(500).json({ error: 'Login failed', message: error.message });
   }
 });
+
+
+
+
+
+
+
+
+
+// Recent Activities
+app.get('/recent-activities', async (req, res) => {
+  try {
+    const activityIds = await client.sMembers('recent_activities');
+
+    const activities = await Promise.all(
+      activityIds
+        .map(async (id) => await client.hGetAll(id))
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    );
+
+    res.json(activities);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch recent activities', message: error.message });
+  }
+})
+
+// Upcoming Events
+app.get('/upcoming-events', async(req, res) => {
+  try {
+    const eventIds = await client.sMembers('events');
+    const events = await Promise.all(
+      eventIds.map(async (id) => {
+        const eventData = await client.hGetAll(id);
+        return eventData;
+      })
+    );
+
+    const currentDate = new Date();
+    const upcomingEvents = events 
+      .filter(event => {
+        const eventDate = new Date(`${event.date}T${event.time}`);
+        return eventDate > currentDate;
+      })
+      .sort((a, b) => {
+        const dateA = new Date(`${a.date}T${a.time}`);
+        const dateB = new Date(`${b.date}T${b.time}`);
+        return dateA - dateB;
+      })
+      .slice(0, 3);
+
+      res.status(200).json(upcomingEvents);
+  } catch (error) {
+    console.error('Error fetching upcoming events:', error);
+    res.status(500).json({ error: 'Failed to fetch upcoming events', message: error.message });
+  }
+})
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -1,5 +1,6 @@
 import { StrictMode } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import ProtectedRoute from './ProtectedRoute.jsx';
 import Homepage from './Homepage.jsx';
 import Information from './Information.jsx';
 import Login from './official/Login.jsx';
@@ -19,13 +20,55 @@ createRoot(document.getElementById('root')).render(
       <Routes> 
         <Route path="/" element={<Homepage />} />
         <Route path="/information" element={<Information />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/official/dashboard" element={<Dashboard />} />
-        <Route path="/official/residents" element={<Residents />} />
-        <Route path="/official/announcements" element={<AnnouncementsPage />} />
-        <Route path="/official/cases" element={<Cases />} />
-        <Route path="/official/events" element={<EventsCalendar />} />
-        <Route path="/official/users" element={<Users />} />
+        <Route path="/official" element={<Login />} />
+        <Route 
+          path="/official/dashboard" 
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/official/residents" 
+          element={
+            <ProtectedRoute>
+              <Residents />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/official/announcements" 
+          element={
+            <ProtectedRoute>
+              <AnnouncementsPage />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/official/cases" 
+          element={
+            <ProtectedRoute>
+              <Cases />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/official/events" 
+          element={
+            <ProtectedRoute>
+              <EventsCalendar />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/official/users" 
+          element={
+            <ProtectedRoute>
+              <Users />
+            </ProtectedRoute>
+          } 
+        />
       </Routes>
     </BrowserRouter>
   </StrictMode>

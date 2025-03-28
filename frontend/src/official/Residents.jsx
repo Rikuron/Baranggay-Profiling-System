@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios'; 
 import NavBar from './NavBar';
+import TopSection from './TopSection';
 import { FaUser , FaPlus , FaEdit } from "react-icons/fa";
 import { RiSearchEyeLine , RiDeleteBin5Fill } from "react-icons/ri";
 import { PieChart, Pie, Tooltip, Legend, ResponsiveContainer, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
@@ -336,20 +337,7 @@ const Residents = () => {
       <NavBar />
 
       <div className="residents w-[75%] pl-10 pt-4 pr-5 ml-[25%]">
-        <div className="top-section flex items-center justify-between">
-          <p className="title font-patuaOneReg text-3xl text-customDarkBlue2"> Residents Information </p>
-
-          <div className="right-group flex items-center space-x-6">
-            <div className="username-group flex items-center">
-              <FaUser className="w-8 h-8 text-customDarkBlue2" />
-              <p className="font-patuaOneReg text-2xl ml-4"> Username </p>
-            </div>
-
-            <button className="logout-button w-[55%] px-5 h-10 rounded-lg border-red-500 border-2 text-red-500 hover:cursor-pointer hover:bg-red-500 hover:text-white transition duration-300 ease-in-out"> 
-              Log out 
-            </button>
-          </div>
-        </div>
+        <TopSection />
 
         <div className="search-and-add-card bg-white w-full h-auto mt-8 px-5 pt-6 pb-3 rounded-xl shadow-md">
           <div className="search-bar flex items-center space-x-3">

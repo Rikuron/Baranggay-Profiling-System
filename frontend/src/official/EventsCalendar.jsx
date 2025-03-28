@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import NavBar from './NavBar';
+import TopSection from './TopSection';
 import axios from 'axios';
 import { FaUser, FaChevronLeft, FaChevronRight , FaEdit } from "react-icons/fa";
 import { MdAdd } from "react-icons/md";
@@ -368,21 +369,7 @@ const EventsCalendar = () => {
       <NavBar />
 
       <div className="events-calendar-page w-[75%] pl-10 pt-4 pr-5 ml-[25%]">
-        <div className="top-section flex items-center justify-between">
-          <p className="title font-patuaOneReg text-3xl text-customDarkBlue2"> Events Calendar </p>
-
-          <div className="right-group flex items-center space-x-6">
-            <div className="username-group flex items-center">
-              <FaUser className="w-8 h-8 text-customDarkBlue2" />
-              <p className="font-patuaOneReg text-2xl ml-4"> Username </p>
-            </div>
-
-            <button className="logout-button w-[55%] px-5 h-10 rounded-lg border-red-500 border-2 text-red-500 hover:cursor-pointer hover:bg-red-500 hover:text-white transition duration-300 ease-in-out"> 
-              Log out 
-            </button>
-          </div>
-
-        </div>
+        <TopSection />
 
         <div className="calendar-card bg-white w-full h-auto my-8 px-6 py-6 rounded-xl shadow-md">
           {/* Calendar Header with Month/Year and Navigation */}
