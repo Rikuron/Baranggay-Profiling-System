@@ -1,7 +1,7 @@
 import React, { useState , useEffect } from 'react';
 import NavBar from './NavBar';
 import TopSection from './TopSection';
-import { FaHouseUser , FaUserPlus, FaUserEdit , FaEdit , FaBriefcaseMedical } from "react-icons/fa";
+import { FaHouseUser , FaUserPlus, FaUserEdit , FaBriefcaseMedical } from "react-icons/fa";
 import { BiSolidMegaphone } from "react-icons/bi";
 import { IoBriefcase } from "react-icons/io5";
 import { MdEvent , MdEventRepeat , MdAnnouncement , MdOutlineAnnouncement } from "react-icons/md";
@@ -42,7 +42,7 @@ const Dashboard = () => {
     };
 
     fetchData();
-  }, []);
+  }, [setLoading]);
 
   // Occupation Data
   const occupationData = Object.entries(
